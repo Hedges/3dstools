@@ -127,6 +127,7 @@ enum
 	PF_W = 2, // Write flag
 	PF_X = 1, // Execute flag
 	PF_OS_SHARED = 0x100000, // OS-specific
+	PF_CTRSDK = 0x80000000, // Set in CTRSDK ELF Text segments
 };
 
 enum

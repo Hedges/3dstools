@@ -27,7 +27,7 @@
 #ifndef POLARSSL_AES_H
 #define POLARSSL_AES_H
 
-#include "polarssl/config.h"
+#include "config.h"
 
 #include <string.h>
 

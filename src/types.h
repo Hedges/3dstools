@@ -14,7 +14,7 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 
-#define BIT(n) (1U << (n))
+#define BIT(n) (1ULL << (n))
 
 static inline uint16_t __local_bswap16(uint16_t x) {
 	return ((x << 8) & 0xff00) | ((x >> 8) & 0x00ff);
@@ -32,6 +32,11 @@ static inline uint64_t __local_bswap64(uint64_t x)
 {
 	return (uint64_t)__local_bswap32(x>>32) |
 	      ((uint64_t)__local_bswap32(x&0xFFFFFFFF) << 32);
+}
+
+static inline uint64_t align(uint64_t size, uint64_t align)
+{
+	return (size % align) == 0? size : (size - (size % align) + align); 
 }
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__

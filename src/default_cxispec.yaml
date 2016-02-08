@@ -1,0 +1,147 @@
+ProcessConfig:
+  IdealProcessor: 0
+  AffinityMask: 1
+  AppMemory: 64MB # 64MB/72MB/80MB/96MB
+  Priority: 0x30
+  SnakeAppMemory: 124MB # Legacy/124MB/178MB
+  SnakeCpuSpeed: 804MHz
+  EnableL2Cache: true
+  # Required System Modules
+  Dependency:
+    - ac
+    #- act
+    - am
+    - boss
+    - camera
+    - cecd
+    - cfg
+    - codec
+    - csnd
+    - dlp
+    - dsp
+    - friends
+    - gpio
+    - gsp
+    - hid
+    - http
+    - i2c
+    - ir
+    - mcu
+    - mic
+    - ndm
+    - news
+    #- nfc
+    - nim
+    - nwm
+    - pdn
+    - ps
+    - ptm
+    #- qtm
+    - ro
+    - socket
+    - spi
+    - ssl
+
+SaveData:
+  SaveDataSize: 128K
+  #SystemSaveIds:
+  #  - 0x200
+  #  - 0x201
+  #UseExtdata: true
+  #ExtDataId: 0xdeadbeef
+  #UseOtherVariationSaveData: true
+  #OtherUserSaveIds:
+  #  - 0x301
+  #  - 0x302
+  #  - 0x303
+  #AccessibleSaveIds:
+  #  - 0x301
+  #  - 0x302
+  #  - 0x303
+  #  - 0x304
+  #  - 0x305
+  #  - 0x306
+
+Rights:
+  Services:
+    - cfg:u
+    - fs:USER
+    - gsp::Gpu
+    - hid:USER
+    - ndm:u
+    - pxi:dev
+    - APT:U
+    - ac:u
+    - act:u
+    - am:net
+    - boss:U
+    - cam:u
+    - cecd:u
+    - csnd:SND
+    - frd:u
+    - http:C
+    - ir:USER
+    - ir:u
+    - ir:rst
+    - ldr:ro
+    - mic:u
+    - news:u
+    - nfc:u
+    - nim:aoc
+    - nwm::UDS
+    - ptm:u
+    - qtm:u
+    - soc:U
+    - ssl:C
+    - y2r:u
+
+  IORegisterMapping:
+    - 1ff00000-1ff7ffff # DSP memory
+
+  MemoryMapping:
+    - 1f000000-1f5fffff:r # VRAM
+
+  FSAccess:
+    #- CategorySystemApplication
+    #- CategoryHardwareCheck
+    #- CategoryFileSystemTool
+    #- Debug
+    #- TwlCard
+    #- TwlNand
+    #- Boss
+    - Sdmc
+    #- Core
+    #- CtrNandRo
+    #- CtrNandRw
+    #- CtrNandRoWrite
+    #- CategorySystemSettings
+    #- Cardboard
+    #- ExportInportIvs
+    #- SdmcWriteOnly
+    #- SwitchCleanup
+    #- SaveDataMove
+    #- Shop
+    #- Shell # NS
+    #- CategoryHomeMenu
+
+  KernelFlags:
+   - PermitDebug
+   #- ForceDebug
+   - CanUseNonAlphaNum
+   - CanWriteSharedPage
+   #- CanUsePriviligedPriority
+   - PermitMainFunctionArgument
+   - CanShareDeviceMemory
+   #- RunnableOnSleep
+   - SpecialMemoryLayout
+   - CanAccessCore2  # N3DS Only
+
+  #Arm9Access:
+    #- MountNand
+    #- MountNandROWrite
+    #- MountTwlN
+    #- MountWNand
+    #- MountCardSpi
+    #- UseSDIF3
+    #- CreateSeed
+    #- UseCardSpi

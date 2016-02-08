@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "polarssl/config.h"
+#include "config.h"
 
 #ifdef _MSC_VER
 #include <basetsd.h>
