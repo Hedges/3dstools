@@ -18,6 +18,8 @@ Makefile
 3dsxdump
 3dsxtool
 smdhtool
+cxitool
 .deps/
 *.bz2
+*.dirstamp
 3dstools.VC.opendb

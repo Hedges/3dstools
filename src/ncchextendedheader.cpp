@@ -154,6 +154,8 @@ int ExtendedHeader::setDependencies(std::vector<u64>& dependencies)
 	{
 		m_Header.processInfo.dependencyList[i] = le_dword(dependencies[i]);
 	}
+    
+    return 0;
 }
 
 void ExtendedHeader::setSaveSize(u32 size)
@@ -266,7 +268,7 @@ int ExtendedHeader::setOtherUserSaveIds(std::vector<u32>& ids, bool UseOtherVari
 
 	for (u32 i = 0; i < ids.size() && i < 3; i++)
 	{
-		saveIds = (saveIds << 20) | ids[i] & 0xffffff;
+		saveIds = (saveIds << 20) | (ids[i] & 0xffffff);
 	}
 
 	// set bit60 if UseOtherVariationSaveData
@@ -295,13 +297,13 @@ int ExtendedHeader::setAccessibleSaveIds(std::vector<u32>& ids, bool UseOtherVar
 	// first three ids are written to otherUserSaveIds
 	for (u32 i = 0; i < ids.size() && i < 3; i++)
 	{
-		otherUserSaveIds = (otherUserSaveIds << 20) | ids[i] & 0xffffff;
+		otherUserSaveIds = (otherUserSaveIds << 20) | (ids[i] & 0xffffff);
 	}
 
 	// final three ids are written to extdataId
 	for (u32 i = 3; i < ids.size() && i < 6; i++)
 	{
-		extdataId = (extdataId << 20) | ids[i] & 0xffffff;
+		extdataId = (extdataId << 20) | (ids[i] & 0xffffff);
 	}
 
 	// set bit60 if UseOtherVariationSaveData

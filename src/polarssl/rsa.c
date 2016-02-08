@@ -29,14 +29,14 @@
  *  http://www.cacr.math.uwaterloo.ca/hac/about/chap8.pdf
  */
 
-#include "polarssl/config.h"
+#include "src/polarssl/config.h"
 
 #if defined(POLARSSL_RSA_C)
 
-#include "polarssl/rsa.h"
+#include "src/polarssl/rsa.h"
 
 #if defined(POLARSSL_PKCS1_V21)
-#include "polarssl/md.h"
+#include "src/polarssl/md.h"
 #endif
 
 #include <stdlib.h>

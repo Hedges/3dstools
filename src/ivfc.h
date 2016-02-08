@@ -55,6 +55,5 @@ private:
 	u64 m_Level2TrueSize;
 
 	ByteBuffer m_Header;
-	u32 m_HeaderSizeTrue;
 };
 

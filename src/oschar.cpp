@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <vector>
 #include "oschar.h"
 
 int os_fstat(const oschar_t *path)
@@ -167,17 +168,18 @@ static ssize_t decode_utf8(uint32_t *out, const uint8_t *in)
 
 utf16char_t* strcopy_UTF8toUTF16(const char *src)
 {
+    // convert src
 	std::vector<utf16char_t> rstr;
 	rstr.clear();
 	rstr.clear();
 	for (;;)
 	{
 		uint32_t code = 0;
-		ssize_t units = decode_utf8(&code, (const uint8_t*)ostr);
+		ssize_t units = decode_utf8(&code, (const uint8_t*)src);
 		if (units == -1)
 		{
 			rstr.push_back(0xFFFD); // Replacement character
-			ostr++;
+			src++;
 			continue;
 		}
 		if (code == 0)
@@ -194,8 +196,10 @@ utf16char_t* strcopy_UTF8toUTF16(const char *src)
 		else
 			rstr.push_back(0xFFFD); // Replacement character
 
-		ostr += units;
+		src += units;
 	}
+    
+    // save converted src
 	utf16char_t *out = (utf16char_t*)calloc(sizeof(utf16char_t), rstr.size()+1);
 	size_t i;
 	for (i = 0; i < rstr.size(); i++)
