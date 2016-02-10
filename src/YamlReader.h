@@ -6,13 +6,13 @@
 #include "types.h"
 #include "libyaml/yaml.h"
 
-
+/*
 class YamlException : public std::exception
 {
 public:
 	YamlException(const std::string& error) throw()
 	{
-		m_What = error;
+		what_ = error;
 	}
 	
 	~YamlException() throw()
@@ -22,11 +22,12 @@ public:
 	
 	virtual const char* what() const throw()
 	{
-		return m_What.c_str();
+		return what_.c_str();
 	}
 private:
-	std::string m_What;
+	std::string what_;
 };
+*/
 
 class YamlReader
 {
@@ -34,46 +35,47 @@ public:
 	YamlReader();
 	~YamlReader();
 
-	void loadFile(const char *path);
+	int LoadFile(const char* path);
 
 	// returns a reference to the current event string
-	const std::string& getEventString(void) const;
+	inline const std::string& event_string(void) const { return event_str_; }
 
 	// copies the key's value (or sequence of values) to a referenced dst
-	void copyValue(std::string& dst);
-	void copyValueSequence(std::vector<std::string>& dst);
+	int SaveValue(std::string& dst);
+	int SaveValueSequence(std::vector<std::string>& dst);
 
 	// yaml event controls
-	bool getEvent();
-	u32 getLevel() const;
-	bool isLevelInScope(u32 level) const;
-	bool isLevelSame(u32 level) const;
+	bool GetEvent();
+	inline u32 level() const { return level_; }
+	inline bool is_level_in_scope(u32 level) const { return level_ >= level; }
+	inline bool is_level_same(u32 level) const { return level_ == level; }
+	inline bool is_done() const { return is_done_; }
+	inline bool is_error() const { return is_api_error_; }
 
-	bool isDone() const;
+	inline bool is_event_nothing() const { return event_.type == YAML_NO_EVENT; }
+	inline bool is_event_scalar() const { return event_.type == YAML_SCALAR_EVENT; }
+	inline bool is_event_mapping_start() const { return event_.type == YAML_MAPPING_START_EVENT; }
+	inline bool is_event_mapping_end() const { return event_.type == YAML_MAPPING_END_EVENT; }
+	inline bool is_event_sequence_start() const { return event_.type == YAML_SEQUENCE_START_EVENT; }
+	inline bool is_event_sequence_end() const { return event_.type == YAML_SEQUENCE_END_EVENT; }
 
-	bool isEventNothing() const;
-	bool isEventScalar() const;
-	bool isEventMappingStart() const;
-	bool isEventMappingEnd() const;
-	bool isEventSequenceStart() const;
-	bool isEventSequenceEnd() const;
-
-	bool isSequence() const;
-	bool isKey() const;
+	inline bool is_sequence() const { return is_sequence_; }
+	inline bool is_key() const { return is_key_; }
 
 private:
 	// for libyaml
-	FILE *m_FilePtr;
-	yaml_parser_t m_Parser;
-	yaml_event_t m_Event;
-	bool m_IsDone;
+	FILE *yaml_file_ptr_;
+	yaml_parser_t parser_;
+	yaml_event_t event_;
+	bool is_done_;
+	bool is_api_error_;
 
-	// for
-	bool m_IsSequence;
-	bool m_IsKey;
-	u32 m_Level;
+	// for event control
+	bool is_sequence_;
+	bool is_key_;
+	u32 level_;
 
-	std::string m_EventStr;
+	std::string event_str_;
 
-	void cleanup();
+	void Cleanup();
 };

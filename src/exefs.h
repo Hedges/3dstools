@@ -1,6 +1,8 @@
 #pragma once
+#include <vector>
 #include "types.h"
 #include "ByteBuffer.h"
+#include "crypto.h"
 
 class Exefs
 {
@@ -9,49 +11,40 @@ public:
 	~Exefs();
 
 	// trigger internal exefs creation
-	int createExefs();
+	int CreateExefs();
 
 	// add files to Exefs
-	int setExefsFile(const u8 *data, u32 size, const char *name);
+	int SetExefsFile(const char* name, const u8* data, u32 size);
 	
 	// data extraction
-	const u8* getData() const;
-	u32 getDataSize() const;
-	u32 getHashedDataSize() const;
-	const u8* getHash() const;
+	inline const u8* data_blob() const { return data_.data_const(); }
+	inline u32 data_size() const { return data_.size(); }
 private:
-	static const int DEFAULT_BLOCK_SIZE = 0x200;
-	static const int MAX_EXEFS_FILE_NAMELEN = 8;
-	static const int MAX_EXEFS_FILE_NUM = 8;
+	static const int kDefaultBlockSize = 0x200;
+	static const int kMaxExefsFileNameLen = 8;
+	static const int kMaxExefsFileNum = 8;
 
 	struct sFile
 	{
 		const u8 *data;
 		const char *name;
 		u32 size;
-		u8 hash[0x20];
-	};
-
-	struct sFileEntry
-	{
-		char name[MAX_EXEFS_FILE_NAMELEN];
-		u32 offset;
-		u32 size;
+		u8 hash[Crypto::kSha256HashLen];
 	};
 
 	struct sExefsHeader
 	{
-		struct sFileEntry files[MAX_EXEFS_FILE_NUM];
+		struct sFileEntry
+		{
+			char name[kMaxExefsFileNameLen];
+			u32 offset;
+			u32 size;
+		} files[kMaxExefsFileNum];
 		u8 reserved[0x80];
-		u8 fileHashes[MAX_EXEFS_FILE_NUM][0x20];
+		u8 fileHashes[kMaxExefsFileNum][Crypto::kSha256HashLen];
 	};
 
-	u32 m_BlockSize;
-
-	u32 m_FileNum;
-	struct sFile m_Files[MAX_EXEFS_FILE_NUM];
-
-	ByteBuffer m_Data;
-	
-	u8 m_HeaderHash[0x20];
+	u32 block_size_;
+	std::vector<struct sFile> file_;
+	ByteBuffer data_;
 };

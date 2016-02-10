@@ -1,77 +1,93 @@
 #pragma once
-#ifdef WIN32
-#include <windows.h>
-typedef WCHAR oschar_t;
-#define OSPATHLEN MAX_PATH
-#define OSWILDCARD L"\\*"
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <unistd.h>
-typedef char oschar_t;
-#define OSPATHLEN PATH_MAX
-#define OSWILDCARD "/"
-#endif
+#include "types.h"
+#include "ByteBuffer.h"
+#include "romfs_dir_scanner.h"
 
-typedef std::vector<u16> romfs_str;
-
-struct romfs_meta_t
+class Romfs
 {
-	romfs_str name;
-	u32 offset;
-	u32 nextHash;
-
-	romfs_meta_t() : name(), offset(0), nextHash(~0) { }
-};
-
-struct romfs_file_t; // Forward declaration
-
-struct romfs_dir_t : public romfs_meta_t
-{
-	romfs_dir_t *parent;
-	romfs_dir_t *sibling;
-	romfs_dir_t *firstSubDir;
-	romfs_file_t *firstFile;
-
-	romfs_dir_t() : romfs_meta_t(), parent(NULL), sibling(NULL), firstSubDir(NULL), firstFile(NULL) { }
-};
-
-struct romfs_file_t : public romfs_meta_t
-{
-	romfs_dir_t *parent;
-	romfs_file_t *sibling;
-	u64 dataOff, dataSize;
-	void* data;
-
-	romfs_file_t(romfs_dir_t* parent) : romfs_meta_t(), parent(parent), sibling(NULL), dataOff(0), dataSize(0), data(NULL) { }
-	~romfs_file_t() { if (data) free(data); }
-};
-
-class RomFS
-{
-	u32 *dirHashTable, *fileHashTable;
-	u32 dirHashCount, fileHashCount;
-
-	u32 dirOff, fileOff;
-	u64 fileDataOff;
-
-	std::list<romfs_dir_t> dirs;
-	std::list<romfs_file_t> files;
-
-	romfs_dir_t& AddDir(romfs_dir_t* parent, const oschar_t* name);
-	romfs_file_t& AddFile(romfs_dir_t* parent, const oschar_t* name);
-
-	romfs_dir_t& Root() { return dirs.front(); }
-
-	int ScanDir(romfs_dir_t& dir, const oschar_t* path);
-	int CalcHash(void);
-
 public:
-	RomFS();
-	~RomFS();
-	int Build(const char* path);
-	int WriteToFile(FileClass& f);
+	Romfs();
+	~Romfs();
+
+	// creating romfs from directory path
+	int CreateRomfs(const char* dir);
+	
+	inline const u8* data_blob() const { return data_.data_const(); }
+	inline u64 data_size() const { return data_.size(); }
+private:
+	static const int kRomfsSectionNum = 4;
+	static const u32 kUnusedOffset = 0xffffffff;
+
+	enum RomfsHeaderSections
+	{
+		ROMFS_SECTION_DIR_HASH_TABLE,
+		ROMFS_SECTION_DIR_ENTRY_TABLE,
+		ROMFS_SECTION_FILE_HASH_TABLE,
+		ROMFS_SECTION_FILE_ENTRY_TABLE
+	};
+
+#pragma pack (push, 1)
+	struct sRomfsHeader
+	{
+		u32 header_size;
+		struct RomfsSectionGeometry
+		{
+			u32 offset;
+			u32 size;
+		} section[kRomfsSectionNum];
+		u32 data_offset;
+	};
+
+	struct sRomfsDirEntry
+	{
+		u32 parent_offset;
+		u32 sibling_offset;
+		u32 child_offset;
+		u32 file_offset;
+		u32 hash_offset;
+		u32 name_size;
+	};
+
+	struct sRomfsFileEntry
+	{
+		u32 parent_offset;
+		u32 sibling_offset;
+		u64 data_offset;
+		u64 data_size;
+		u32 hash_offset;
+		u32 name_size;
+	};
+#pragma pack (pop)
+
+	struct sRomfsHeaderPointers {
+		u32 dir_hash_num;
+		u32* dir_hash_table;	
+
+		u32 file_hash_num;
+		u32* file_hash_table;
+
+		u32 dir_entry_offset;
+		u8* dir_entry_table;
+
+		u32 file_entry_offset;
+		u8* file_entry_table;
+
+		u64 data_offset;
+		u8* data;
+	} header_;
+	
+	RomfsDirScanner scanner_;
+	ByteBuffer data_; // raw romfs filesystem
+
+	u32 GetDirNum(const struct RomfsDirScanner::sDirectory& dir);
+	u32 GetFileNum(const struct RomfsDirScanner::sDirectory& dir);
+	u32 GetDirTableSize(const struct RomfsDirScanner::sDirectory& dir);
+	u32 GetFileTableSize(const struct RomfsDirScanner::sDirectory& dir);
+	u64 GetDataSize(const struct RomfsDirScanner::sDirectory& dir);
+
+	int CreateRomfsLayout();
+
+	void AddDirToRomfs(const struct RomfsDirScanner::sDirectory& dir, u32 parent, u32 sibling);
+	int AddDirChildToRomfs(const struct RomfsDirScanner::sDirectory& dir, u32 parent, u32 diroff);
+	int AddFileToRomfs(const RomfsDirScanner::sFile& file, u32 parent, u32 sibling);
 };

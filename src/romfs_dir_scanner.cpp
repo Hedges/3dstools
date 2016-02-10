@@ -1,76 +1,29 @@
 #include <cstdlib>
-#include "romfsdirscanner.h"
+#include "romfs_dir_scanner.h"
 
 #define safe_call(a) do { int rc = a; if(rc != 0) return rc; } while(0)
 
 RomfsDirScanner::RomfsDirScanner()
 {
-	initDirectory(m_Root);
+	InitDirectory(root_);
 }
 
 RomfsDirScanner::~RomfsDirScanner()
 {
-	freeDirectory(m_Root);
+	FreeDirectory(root_);
 }
 
-int RomfsDirScanner::openDir(const char *root)
+int RomfsDirScanner::ScanDir(const char* root)
 {
 	static const utf16char_t EMPTY_PATH[1] = { '\0' };
-	m_Root.path = os_CopyConvertCharStr(root);
-	m_Root.name = utf16_CopyStr(EMPTY_PATH);
-	m_Root.namesize = 0;
+	root_.path = os_CopyConvertCharStr(root);
+	root_.name = utf16_CopyStr(EMPTY_PATH);
+	root_.namesize = 0;
 
-	return populateDir(m_Root);
+	return PopulateDir(root_);
 }
 
-struct RomfsDirScanner::sDirectory const & RomfsDirScanner::getDir() const
-{
-	return m_Root;
-}
-
-u32 RomfsDirScanner::getDirNum(const struct RomfsDirScanner::sDirectory& dir)
-{
-	u32 num = 0;
-
-	num = dir.child.size();
-
-	for (size_t i = 0; i < dir.child.size(); i++)
-	{
-		num += getDirNum(dir.child[i]);
-	}
-
-	return num;
-}
-
-u32 RomfsDirScanner::getFileNum(const struct RomfsDirScanner::sDirectory& dir)
-{
-	u32 num = 0;
-
-	num = dir.file.size();
-
-	for (size_t i = 0; i < dir.child.size(); i++)
-	{
-		num += getFileNum(dir.child[i]);
-	}
-
-	return num;
-}
-
-u64 RomfsDirScanner::getDirFileSize(const struct RomfsDirScanner::sDirectory& dir)
-{
-	u64 size = 0;
-	for (size_t i = 0; i < dir.child.size(); i++)
-	{
-		size += getDirFileSize(dir.child[i]);
-	}
-	for (size_t i = 0; i < dir.file.size(); i++)
-	{
-		size += dir.file[i].size;
-	}
-	return size;
-}
-
-void RomfsDirScanner::initDirectory(struct RomfsDirScanner::sDirectory& dir)
+void RomfsDirScanner::InitDirectory(struct RomfsDirScanner::sDirectory& dir)
 {
 	dir.path = NULL;
 	dir.name = NULL;
@@ -79,7 +32,7 @@ void RomfsDirScanner::initDirectory(struct RomfsDirScanner::sDirectory& dir)
 	dir.file.clear();
 }
 
-void RomfsDirScanner::freeDirectory(struct RomfsDirScanner::sDirectory& dir)
+void RomfsDirScanner::FreeDirectory(struct RomfsDirScanner::sDirectory& dir)
 {
 	// free memory allocations
 	if (dir.path)
@@ -94,7 +47,7 @@ void RomfsDirScanner::freeDirectory(struct RomfsDirScanner::sDirectory& dir)
 	// free child dirs
 	for (size_t i = 0; i < dir.child.size(); i++)
 	{
-		freeDirectory(dir.child[i]);
+		FreeDirectory(dir.child[i]);
 	}
 
 	// free files
@@ -117,10 +70,10 @@ void RomfsDirScanner::freeDirectory(struct RomfsDirScanner::sDirectory& dir)
 	}
 
 	// clear this directory
-	initDirectory(dir);
+	InitDirectory(dir);
 }
 
-int RomfsDirScanner::populateDir(struct RomfsDirScanner::sDirectory& dir)
+int RomfsDirScanner::PopulateDir(struct RomfsDirScanner::sDirectory& dir)
 {
 	_OSDIR *dp;
 	struct _osstat st;
@@ -153,7 +106,7 @@ int RomfsDirScanner::populateDir(struct RomfsDirScanner::sDirectory& dir)
 			child.namesize = utf16_strlen(child.name)*sizeof(utf16char_t);
 
 			// populate child
-			populateDir(child);
+			PopulateDir(child);
 
 			// add to parent struct
 			dir.child.push_back(child);

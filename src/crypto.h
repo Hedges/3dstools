@@ -1,12 +1,22 @@
 #pragma once
 #include "types.h"
 
-void hashSha1(const u8 *in, u32 size, u8 hash[20]);
-void hashSha256(const u8 *in, u32 size, u8 hash[32]);
+class Crypto
+{
+public:
+	static const int kSha1HashLen = 20;
+	static const int kSha256HashLen = 32;
+	static const int kAes128KeySize = 0x10;
+	static const int kAesBlockSize = 0x10;
+	static const int kRsa2048Size = 0x100;
 
-void aesCtr(const u8 *in, u8 *out, u32 size, const u8 key[0x10], u8 ctr[0x10]);
-void aesCbcDecrypt(const u8 *in, u8 *out, u32 size, const u8 key[0x10], u8 iv[0x10]);
-void aesCbcEncrypt(const u8 *in, u8 *out, u32 size, const u8 key[0x10], u8 iv[0x10]);
+	static void Sha1(const u8* in, u32 size, u8 hash[kSha1HashLen]);
+	static void Sha256(const u8* in, u32 size, u8 hash[kSha256HashLen]);
 
-int signRsa2048Sha256(u8 signOut[0x100], const u8 hashIn[0x20], const u8 modulus[0x100], const u8 privExp[0x100]);
-int verifyRsa2048Sha256(const u8 signIn[0x100], const u8 hashIn[0x20], const u8 modulus[0x100]);
+	static void AesCtr(const u8* in, u32 size, const u8 key[kAes128KeySize], u8 ctr[kAesBlockSize], u8* out);
+	static void AesCbcDecrypt(const u8* in, u32 size, const u8 key[kAes128KeySize], u8 iv[kAesBlockSize], u8* out);
+	static void AesCbcEncrypt(const u8* in, u32 size, const u8 key[kAes128KeySize], u8 iv[kAesBlockSize], u8* out);
+
+	static int SignRsa2048Sha256(const u8 modulus[kRsa2048Size], const u8 private_exponent[kRsa2048Size], const u8 hash[kSha256HashLen], u8 signature[kRsa2048Size]);
+	static int VerifyRsa2048Sha256(const u8 modulus[kRsa2048Size], const u8 hash[kSha256HashLen], const u8 signature[kRsa2048Size]);
+};

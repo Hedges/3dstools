@@ -8,38 +8,37 @@ class ByteBuffer
 {
 public:
 	ByteBuffer() :
-		m_Buffer(NULL),
-		m_Size(0),
-		m_ApparentSize(0)
+		data_(NULL),
+		size_(0),
+		apparent_size_(0)
 	{
 
 	}
 
 	~ByteBuffer()
 	{
-		freeMemory();
+		FreeMemory();
 	}
 
 	int alloc(size_t size)
 	{
-		if (size > m_Size)
+		if (size > size_)
 		{
-			freeMemory();
-			return allocMemory(size);
+			FreeMemory();
+			return AllocateMemory(size);
 		}
 		else
 		{
-			m_ApparentSize = size;
-			clearMemory();
+			apparent_size_ = size;
+			ClearMemory();
 		}
 		return 0;
 	}
 
-	int openFile(const char* path)
+	int OpenFile(const char* path)
 	{
-		FILE *fp;
+		FILE* fp;
 		size_t filesz, filepos;
-		const size_t BLOCK_SIZE = 0x100000;
 
 		if ((fp = fopen(path, "rb")) == NULL)
 		{
@@ -56,13 +55,14 @@ public:
 			return 1;
 		}
 
-		for (filepos=0; filesz > BLOCK_SIZE; filesz -= BLOCK_SIZE, filepos += BLOCK_SIZE)
+		for (filepos=0; filesz > kBlockSize; filesz -= kBlockSize, filepos += kBlockSize)
 		{
-			fread(data()+filepos, 1, BLOCK_SIZE, fp);
+			fread(data_ + filepos, 1, kBlockSize, fp);
 		}
+
 		if (filesz)
 		{
-			fread(data() + filepos, 1, filesz, fp);
+			fread(data_ + filepos, 1, filesz, fp);
 		}
 
 		fclose(fp);
@@ -70,48 +70,39 @@ public:
 		return 0;
 	}
 
-	size_t size() const
-	{
-		return m_ApparentSize;
-	}
-
-	byte_t* data()
-	{
-		return m_Buffer;
-	}
-
-	const byte_t* dataConst() const
-	{
-		return m_Buffer;
-	}
+	inline byte_t* data() { return data_; }
+	inline const byte_t* data_const() const { return data_; }
+	inline size_t size() const { return apparent_size_; }
 
 private:
-	byte_t *m_Buffer;
-	size_t m_Size;
-	size_t m_ApparentSize;
+	static const size_t kBlockSize = 0x100000;
 
-	void freeMemory()
+	byte_t* data_;
+	size_t size_;
+	size_t apparent_size_;
+
+	void FreeMemory()
 	{
-		free(m_Buffer);
-		m_Size = 0;
-		m_ApparentSize = 0;
+		free(data_);
+		size_ = 0;
+		apparent_size_ = 0;
 	}
 
-	int allocMemory(size_t size)
+	int AllocateMemory(size_t size)
 	{
-		m_Size = size;
-		m_ApparentSize = size;
-		if ((m_Buffer = (byte_t*)malloc(m_Size)) == NULL)
+		size_ = align(size,0x1000);
+		apparent_size_ = size;
+		if ((data_ = (byte_t*)malloc(size_)) == NULL)
 		{
 			fprintf(stderr, "[ERROR] Cannot allocate memory!\n");
 			return 1;
 		}
-		clearMemory();
+		ClearMemory();
 		return 0;
 	}
 
-	void clearMemory()
+	void ClearMemory()
 	{
-		memset(m_Buffer, 0, m_ApparentSize);
+		memset(data_, 0, size_);
 	}
 };

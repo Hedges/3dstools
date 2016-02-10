@@ -1,105 +1,117 @@
 #include "YamlReader.h"
 
 YamlReader::YamlReader() :
-	m_FilePtr(NULL),
-	m_IsDone(false),
-	m_Level(0),
-	m_EventStr("")
+	yaml_file_ptr_(NULL),
+	is_done_(false),
+	is_api_error_(false),
+	level_(0),
+	event_str_("")
 {
 }
 
 YamlReader::~YamlReader()
 {
-	cleanup();
+	Cleanup();
 }
 
-void YamlReader::loadFile(const char * path)
+int YamlReader::LoadFile(const char * path)
 {
 	// do some cleanup before a file is loaded
-	cleanup();
+	Cleanup();
 	
 	// Create Parser Object
-	yaml_parser_initialize(&m_Parser);
+	yaml_parser_initialize(&parser_);
 
 	// Open the file
-	m_FilePtr = fopen(path, "rb");
-	if (m_FilePtr == NULL) 
+	yaml_file_ptr_ = fopen(path, "rb");
+	if (yaml_file_ptr_ == NULL) 
 	{
-		throw YamlException("Failed to open: " + std::string(path));
+		//throw YamlException("Failed to open: " + std::string(path));
+		fprintf(stderr, "[ERROR] Failed to open: %s\n", path);
+		return 1;
 	}
 
 	// Associate file with parser object
-	yaml_parser_set_input_file(&m_Parser, m_FilePtr);
+	yaml_parser_set_input_file(&parser_, yaml_file_ptr_);
 
 	// Set initial conditions
-	m_IsSequence = false;
-	m_IsKey = true;
-	m_Level = 0;
+	is_sequence_ = false;
+	is_key_ = true;
+	level_ = 0;
 
 	// Read the event sequence until the first mapping appears
-	while (getEvent() && !isEventMappingStart());
+	while (GetEvent() && !is_event_mapping_start()) continue;
+
+	return 0;
 }
 
-const std::string & YamlReader::getEventString(void) const
+int YamlReader::SaveValue(std::string & dst)
 {
-	return m_EventStr;
-}
+	std::string key = event_string();
 
-void YamlReader::copyValue(std::string & dst)
-{
-	std::string key = getEventString();
-
-	if (!getEvent() || !isEventScalar()) 
+	if (!GetEvent() || !is_event_scalar()) 
 	{
-		throw YamlException("Item '" + key + "' requires a value");
+		fprintf(stderr, "[ERROR] Item \"%s\" requires a value\n", key.c_str());
+		return 1;
 	}
 
-	dst = std::string(getEventString());
+	dst = std::string(event_string());
+
+	return 0;
 }
 
-void YamlReader::copyValueSequence(std::vector<std::string>& dst)
+int YamlReader::SaveValueSequence(std::vector<std::string>& dst)
 {
-	if (!getEvent() || !isEventSequenceStart())
+	if (!GetEvent() || !is_event_sequence_start())
 	{
-		throw YamlException("Bad formatting, expected sequence");
+		fprintf(stderr, "[ERROR] Bad formatting, expected sequence\n");
+		return 1;
 	}
 
 	dst.clear();
 
-	u32 initLevel = getLevel();
-	while (getEvent() && isLevelSame(initLevel)) 
+	u32 init_level = level();
+	while (GetEvent() && is_level_same(init_level)) 
 	{
-		if (isEventScalar() && !getEventString().empty())
+		if (is_event_scalar() && !event_string().empty())
 		{
-			dst.push_back(getEventString());
+			dst.push_back(event_string());
 		}
 	}
+	
+	return 0;
 }
 
-bool YamlReader::getEvent()
+bool YamlReader::GetEvent()
 {
+	/* Don't start if an API error was encountered */
+	if (is_api_error_) return false;
+
 	/* Finish Previous Event */
-	if (!isEventNothing())
+	if (!is_event_nothing())
 	{
-		if (isEventScalar() && !m_IsSequence)
+		if (is_event_scalar() && !is_sequence_)
 		{
-			m_IsKey = !m_IsKey;
+			is_key_ = !is_key_;
 		}
 
-		yaml_event_delete(&m_Event);
+		yaml_event_delete(&event_);
 	}
 
 	/* Get new event */
-	if (yaml_parser_parse(&m_Parser, &m_Event) != 1)
+	if (yaml_parser_parse(&parser_, &event_) != 1)
 	{
-		throw YamlException("(libyaml) " + std::string(m_Parser.context) + ", " + std::string(m_Parser.problem));
+		fprintf(stderr, "[ERROR] (libyaml) %s, %s\n", parser_.context, parser_.problem);
+		yaml_event_delete(&event_);
+		is_api_error_ = true;
+		return false;
 	}
 
 	/* Clean string */
-	m_EventStr.clear();
+	event_str_.clear();
 
 	/* Process Event */
-	switch (m_Event.type) 
+	switch (event_.type) 
 	{
 		case YAML_NO_EVENT:
 			break;
@@ -110,102 +122,42 @@ bool YamlReader::getEvent()
 		case YAML_ALIAS_EVENT:
 			break;
 		case YAML_SCALAR_EVENT:
-			m_EventStr = std::string(reinterpret_cast<char*>(m_Event.data.scalar.value));
+			event_str_ = std::string(reinterpret_cast<char*>(event_.data.scalar.value));
 			break;
 		case YAML_SEQUENCE_START_EVENT:
-			m_IsSequence = true;
-			m_IsKey = false;
-			m_Level++;
+			is_sequence_ = true;
+			is_key_ = false;
+			level_++;
 			break;
 		case YAML_SEQUENCE_END_EVENT:
-			m_IsSequence = false;
-			m_IsKey = true;
-			m_Level--;
+			is_sequence_ = false;
+			is_key_ = true;
+			level_--;
 			break;
 		case YAML_MAPPING_START_EVENT:
-			m_IsKey = true;
-			m_Level++;
+			is_key_ = true;
+			level_++;
 			break;
 		case YAML_MAPPING_END_EVENT:
-			m_IsKey = true;
-			m_Level--;
+			is_key_ = true;
+			level_--;
 			break;
 		case YAML_DOCUMENT_END_EVENT:
 		case YAML_STREAM_END_EVENT:
-			m_IsDone = true;
+			is_done_ = true;
 			break;
 		default: break;
 	}
 
-	return !isDone();
+	return !is_done() && !is_error();
 }
 
-u32 YamlReader::getLevel() const
+void YamlReader::Cleanup()
 {
-	return m_Level;
-}
-
-bool YamlReader::isLevelInScope(u32 level) const
-{
-	return m_Level >= level;
-}
-
-bool YamlReader::isLevelSame(u32 level) const
-{
-	return m_Level == level;
-}
-
-bool YamlReader::isDone() const
-{
-	return m_IsDone;
-}
-
-bool YamlReader::isEventNothing() const
-{
-	return m_Event.type == YAML_NO_EVENT;
-}
-
-bool YamlReader::isEventScalar() const
-{
-	return m_Event.type == YAML_SCALAR_EVENT;
-}
-
-bool YamlReader::isEventMappingStart() const
-{
-	return m_Event.type == YAML_MAPPING_START_EVENT;
-}
-
-bool YamlReader::isEventMappingEnd() const
-{
-	return m_Event.type == YAML_MAPPING_END_EVENT;
-}
-
-bool YamlReader::isEventSequenceStart() const
-{
-	return m_Event.type == YAML_SEQUENCE_START_EVENT;
-}
-
-bool YamlReader::isEventSequenceEnd() const
-{
-	return m_Event.type == YAML_SEQUENCE_END_EVENT;
-}
-
-bool YamlReader::isSequence() const
-{
-	return m_IsSequence;
-}
-
-bool YamlReader::isKey() const
-{
-	return m_IsKey;
-}
-
-void YamlReader::cleanup()
-{
-	if (m_FilePtr != NULL)
+	if (yaml_file_ptr_ != NULL)
 	{
-		yaml_parser_delete(&m_Parser);
-		fclose(m_FilePtr);
-		m_FilePtr = NULL;
+		yaml_parser_delete(&parser_);
+		fclose(yaml_file_ptr_);
+		yaml_file_ptr_ = NULL;
 	}
 }

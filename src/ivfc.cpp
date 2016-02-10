@@ -1,6 +1,5 @@
 #include <cmath>
 #include "ivfc.h"
-#include "crypto.h"
 
 #define IVFC_MAGIC "IVFC"
 
@@ -14,105 +13,69 @@ Ivfc::~Ivfc()
 {
 }
 
-int Ivfc::createIvfcHashTree()
+int Ivfc::CreateIvfcHashTree(const u8* level2, u64 level2_size)
 {
 	struct sIvfcHeader hdr;
 	memset((u8*)&hdr, 0, sizeof(struct sIvfcHeader));
 
 	memcpy(hdr.magic, IVFC_MAGIC, 4);
-	hdr.type = le_word(IVFC_TYPE_ROMFS);
+	hdr.type = le_word(kIvfcTypeRomfs);
 
 	// set data level size
-	hdr.level[2].size = le_dword(m_Level2TrueSize);
-	hdr.level[2].blockSize = le_word(log2l(IVFC_BLOCK_SIZE));
-	hdr.level[1].size = le_dword((align(le_dword(hdr.level[2].size), IVFC_BLOCK_SIZE) / IVFC_BLOCK_SIZE) * IVFC_HASH_SIZE);
-	hdr.level[1].blockSize = le_word(log2l(IVFC_BLOCK_SIZE));
-	hdr.level[0].size = le_dword((align(le_dword(hdr.level[1].size), IVFC_BLOCK_SIZE) / IVFC_BLOCK_SIZE) * IVFC_HASH_SIZE);
-	hdr.level[0].blockSize = le_word(log2l(IVFC_BLOCK_SIZE));
+	hdr.level[2].size = le_dword(level2_size);
+	hdr.level[2].block_size = le_word(log2l(kBlockSize));
+	hdr.level[1].size = le_dword((align(le_dword(hdr.level[2].size), kBlockSize) / kBlockSize) * Crypto::kSha256HashLen);
+	hdr.level[1].block_size = le_word(log2l(kBlockSize));
+	hdr.level[0].size = le_dword((align(le_dword(hdr.level[1].size), kBlockSize) / kBlockSize) * Crypto::kSha256HashLen);
+	hdr.level[0].block_size = le_word(log2l(kBlockSize));
 
 	// set "logical" offsets
-	hdr.level[0].logicalOffset = 0;
-	for (int i = 1; i < IVFC_LEVEL_NUM; i++)
+	hdr.level[0].logical_offset = 0;
+	for (int i = 1; i < kLevelNum; i++)
 	{
-		hdr.level[i].logicalOffset = le_dword(align(le_dword(hdr.level[i - 1].logicalOffset) + le_dword(hdr.level[i - 1].size), IVFC_BLOCK_SIZE));
+		hdr.level[i].logical_offset = le_dword(align(le_dword(hdr.level[i - 1].logical_offset) + le_dword(hdr.level[i - 1].size), kBlockSize));
 	}
 
 	// set master hash size & optional size
-	hdr.masterHashSize = le_word((align(le_dword(hdr.level[0].size), IVFC_BLOCK_SIZE) / IVFC_BLOCK_SIZE) * IVFC_HASH_SIZE);
-	hdr.optionalSize = le_word(sizeof(struct sIvfcHeader));
+	hdr.master_hash_size = le_word((align(le_dword(hdr.level[0].size), kBlockSize) / kBlockSize) * Crypto::kSha256HashLen);
+	hdr.optional_size = le_word(sizeof(struct sIvfcHeader));
 	
-	// allocate memory for each hash level & the header
-	safe_call(m_Level[1].alloc(le_dword((align(hdr.level[1].size, IVFC_BLOCK_SIZE)))));
-	safe_call(m_Level[0].alloc(le_dword((align(hdr.level[0].size, IVFC_BLOCK_SIZE)))));
-	safe_call(m_Header.alloc(align(align(sizeof(struct sIvfcHeader),0x10) + le_dword(hdr.masterHashSize), IVFC_BLOCK_SIZE)));
+	// save used header size
+	header_used_size_ = align(sizeof(struct sIvfcHeader), 0x10) + le_word(hdr.master_hash_size);
 
-	// copy hashes into level 1
-	for (size_t i = 0; i < m_DataHashes.size(); i++)
+	// allocate memory for each hash level & the header
+	safe_call(level_[1].alloc(align(le_dword(hdr.level[1].size), kBlockSize)));
+	safe_call(level_[0].alloc(align(le_dword(hdr.level[0].size), kBlockSize)));
+	safe_call(header_.alloc(align(align(sizeof(struct sIvfcHeader),0x10) + le_dword(hdr.master_hash_size), kBlockSize)));
+
+	// create level 1 hashes from level 2
+	for (size_t i = 0; i < (level2_size / kBlockSize); i++)
 	{
-		memcpy(m_Level[1].data() + IVFC_HASH_SIZE*i, m_DataHashes[i].data, IVFC_HASH_SIZE);
+		Crypto::Sha256(level2 + kBlockSize*i, kBlockSize, level_[1].data() + Crypto::kSha256HashLen*i);
+	}
+	// if there was additional data after the last whole block
+	// copy the remaining data into a block, and hash that
+	if ((level2_size % kBlockSize) > 0)
+	{
+		u8 block[kBlockSize] = { 0 };
+		memcpy(block, level2 + ((level2_size / kBlockSize)*kBlockSize), (level2_size % kBlockSize));
+		Crypto::Sha256(block, kBlockSize, level_[1].data() + Crypto::kSha256HashLen*(level2_size / kBlockSize));
 	}
 
 	// create level 0 hashes from level 1
-	for (size_t i = 0; i < (m_Level[1].size() / IVFC_BLOCK_SIZE); i++)
+	for (size_t i = 0; i < (level_[1].size() / kBlockSize); i++)
 	{
-		hashSha256(m_Level[1].data() + IVFC_BLOCK_SIZE*i, IVFC_BLOCK_SIZE, m_Level[0].data() + IVFC_HASH_SIZE*i);
+		Crypto::Sha256(level_[1].data() + kBlockSize*i, kBlockSize, level_[0].data() + Crypto::kSha256HashLen*i);
 	}
 
 	// create master hashes from level 0
-	for (size_t i = 0; i < (m_Level[2].size() / IVFC_BLOCK_SIZE); i++)
+	for (size_t i = 0; i < (level_[0].size() / kBlockSize); i++)
 	{
-		hashSha256(m_Level[0].data() + IVFC_BLOCK_SIZE*i, IVFC_BLOCK_SIZE, m_Header.data() + align(sizeof(struct sIvfcHeader), 0x10) + IVFC_HASH_SIZE*i);
+		Crypto::Sha256(level_[0].data() + kBlockSize*i, kBlockSize, header_.data() + align(sizeof(struct sIvfcHeader), 0x10) + Crypto::kSha256HashLen*i);
 	}
 
 	// copy header into header buffer
-	memcpy(m_Header.data(), (u8*)&hdr, sizeof(struct sIvfcHeader));
+	memcpy(header_.data(), (u8*)&hdr, sizeof(struct sIvfcHeader));
 
 	return 0;
-}
-
-const u8 * Ivfc::getIvfcLevel(u8 level) const
-{
-	if (level >= IVFC_LEVEL_NUM-1)
-	{
-		return NULL;
-	}
-
-	return m_Level[level].dataConst();
-}
-
-u64 Ivfc::getIvfcLevelSize(u8 level) const
-{
-	if (level >= IVFC_LEVEL_NUM-1)
-	{
-		return 0;
-	}
-
-	return m_Level[level].size();
-}
-
-const u8 * Ivfc::getIvfcHeader() const
-{
-	return m_Header.dataConst();
-}
-
-u32 Ivfc::getIvfcHeaderSize() const
-{
-	return m_Header.size();
-}
-
-u32 Ivfc::getIvfcUsedHeaderSize() const
-{
-	return sizeof(struct sIvfcHeader) + (m_Level[0].size() / IVFC_BLOCK_SIZE) * IVFC_HASH_SIZE;
-}
-
-void Ivfc::processDataBlock(const u8 *block)
-{
-	struct sHash hash;
-	hashSha256(block, IVFC_BLOCK_SIZE, hash.data);
-	m_DataHashes.push_back(hash);
-}
-
-void Ivfc::setLevel2Size(u64 size)
-{
-	m_Level2TrueSize = size;
 }

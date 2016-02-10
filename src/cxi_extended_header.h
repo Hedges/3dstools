@@ -1,9 +1,10 @@
 #pragma once
-#include "types.h"
 #include <vector>
 #include <string>
+#include "types.h"
+#include "crypto.h"
 
-class ExtendedHeader
+class CxiExtendedHeader
 {
 public:
 	enum CtrModules
@@ -149,77 +150,74 @@ public:
 	{
 		u32 start;
 		u32 end;
-		bool readOnly;
+		bool is_read_only;
 	};
 
-	ExtendedHeader();
-	~ExtendedHeader();
+	CxiExtendedHeader();
+	~CxiExtendedHeader();
 
-	int createExheader();
-	// accessdesc needs to be signed
-	int createAccessDesc(const u8 ncchRsaModulus[0x100], const u8 modulus[0x100], const u8 privExponent[0x100]);
+	int CreateExheader(const u8 ncch_rsa_modulus[Crypto::kRsa2048Size], const u8 accessdesc_rsa_modulus[Crypto::kRsa2048Size], const u8 accessdesc_rsa_priv_exponent[Crypto::kRsa2048Size]);
 
-	const u8* getExheader() const;
-	u32 getExheaderSize() const;
-	const u8* getExheaderHash() const;
-	const u8* getAccessDesc() const;
-	u32 getAccessDescSize() const;
+	inline const u8* exheader_blob() const { return (const u8*)&header_; }
+	inline u32 exheader_size() const { return sizeof(struct sExtendedHeader); }
+	inline const u8* accessdesc_blob() const { return (const u8*)&access_descriptor_; }
+	inline u32 accessdesc_size() const { return sizeof(struct sAccessDescriptor); }
 
 	// Set Process Info
-	void setProcessName(const char *name);
-	void setIsCodeCompressed(bool isCodeCompressed);
-	void setIsSdmcTitle(bool isSdmcTitle);
-	void setRemasterVersion(u16 version);
-	void setTextSegment(u32 address, u32 pageNum, u32 codeSize);
-	void setRoDataSegment(u32 address, u32 pageNum, u32 codeSize);
-	void setDataSegment(u32 address, u32 pageNum, u32 codeSize);
-	void setStackSize(u32 stackSize);
-	void setBssSize(u32 bssSize);
-	int setDependencies(std::vector<u64>& dependencies);
-	void setSaveSize(u32 size);
-	void setJumpId(u64 id);
+	void SetProcessName(const char* name);
+	void SetIsCodeCompressed(bool is_code_compressed);
+	void SetIsSdmcTitle(bool is_sdmc_title);
+	void SetRemasterVersion(u16 version);
+	void SetTextSegment(u32 address, u32 page_num, u32 size);
+	void SetRoDataSegment(u32 address, u32 page_num, u32 size);
+	void SetDataSegment(u32 address, u32 page_num, u32 size);
+	void SetStackSize(u32 stack_size);
+	void SetBssSize(u32 bss_size);
+	int SetDependencyList(const std::vector<u64>& dependency_list);
+	void SetSaveDataSize(u32 size);
+	void SetJumpId(u64 id);
 
 	// Set Arm11 Local Capabilities
-	void setProgramId(u64 id);
-	void setKernelId(u64 firmTitleId);
-	void setEnableL2Cache(bool enable);
-	void setCpuSpeed(CpuSpeed speed);
-	void setSystemModeExt(SystemModeExt mode);
-	int setIdealProcessor(u8 processor);
-	int setProcessAffinityMask(u8 affinityMask);
-	void setSystemMode(SystemMode mode);
-	int setProcessPriority(int8_t priority);
-	void setExtdataId(u64 id);
-	int setSystemSaveIds(std::vector<u32>& ids);
-	int setOtherUserSaveIds(std::vector<u32>& ids, bool UseOtherVariationSaveData);
-	int setAccessibleSaveIds(std::vector<u32>& ids, bool UseOtherVariationSaveData);
-	void setFsAccessRights(u64 rights);
-	void setNotUseRomfs();
-	int setServiceList(std::vector<std::string>& serviceList);
-	void setMaxCpu(u16 maxCpu);
-	void setResourceLimitCategory(ResourceLimitCategory category);
+	void SetProgramId(u64 id);
+	void SetFirmwareTitleId(u64 id);
+	void SetEnableL2Cache(bool enable);
+	void SetCpuSpeed(CpuSpeed speed);
+	void SetSystemModeExt(SystemModeExt mode);
+	int SetIdealProcessor(u8 processor);
+	int SetProcessAffinityMask(u8 affinity_mask);
+	void SetSystemMode(SystemMode mode);
+	int SetProcessPriority(int8_t priority);
+	void SetExtdataId(u64 id);
+	int SetSystemSaveIds(const std::vector<u32>& ids);
+	int SetOtherUserSaveIds(const std::vector<u32>& ids, bool use_other_variation_save_data);
+	int SetAccessibleSaveIds(const std::vector<u32>& ids, bool use_other_variation_save_data);
+	void SetFsAccessRights(u64 rights);
+	void SetUseRomfs(bool use_romfs);
+	int SetServiceList(const std::vector<std::string>& service_list);
+	void SetMaxCpu(u16 max_cpu);
+	void SetResourceLimitCategory(ResourceLimitCategory category);
 
 	// Set Arm11 Kernel Capabilities
-	void setInterupts(std::vector<u8>& interuptList);
-	void setSystemCalls(std::vector<u8>& svcList);
-	void setReleaseKernelVersion(u8 major, u8 minor);
-	void setHandleTableSize(u16 size);
-	void setMemoryType(MemoryType type);
-	void setKernelFlags(u32 flags);
-	void setStaticMapping(std::vector<struct sMemoryMapping>& memMaps);
-	void setIOMapping(std::vector<struct sMemoryMapping>& ioMaps);
+	void SetAllowedInterupts(const std::vector<u8>& interupt_list);
+	void SetAllowedSupervisorCalls(const std::vector<u8>& svc_list);
+	void SetReleaseKernelVersion(u8 major, u8 minor);
+	void SetHandleTableSize(u16 size);
+	void SetMemoryType(MemoryType type);
+	void SetKernelFlags(u32 flags);
+	void SetStaticMapping(const std::vector<struct sMemoryMapping>& mapping_list);
+	void SetIOMapping(const std::vector<struct sMemoryMapping>& mapping_list);
 
 	// Set Arm9 Access Control
-	void setArm9IOControl(u32 ioRights, u8 descVersion);
+	void SetArm9IOControl(u32 io_rights, u8 desc_version);
 private:
-	static const u32 MAX_INTERUPT_NUM = 32;
-	static const u32 MAX_INTERUPT_VALUE = 0x7F;
-	static const u32 MAX_SVC_VALUE = 0x7D;
-	static const u32 MAX_DEPENDENCY_NUM = 0x30;
-	static const u32 MAX_KERNEL_DESC = 28;
-	static const u32 MAX_SERVICE_NUM = 34;
-	static const u32 MAX_RESOURCE_LIMITS = 16;
-	static const u32 MAX_SYSTEM_SAVE_IDS = 2;
+	static const u32 kMaxInteruptNum = 32;
+	static const u32 kMaxInteruptValue = 0x7F;
+	static const u32 kMaxSvcValue = 0x7D;
+	static const u32 kMaxDependencyNum = 0x30;
+	static const u32 kMaxKernelDescNum = 28;
+	static const u32 kMaxServiceNum = 34;
+	static const u32 kMaxResourceLimitNum = 16;
+	static const u32 kMaxSystemSaveIdNum = 2;
 
 	enum FSAttributes
 	{
@@ -241,8 +239,8 @@ private:
 	struct sCodeSegmentInfo
 	{
 		u32 address;
-		u32 pageNum;
-		u32 codeSize;
+		u32 page_num;
+		u32 size;
 	};
 
 	struct sProcessInfo
@@ -254,108 +252,106 @@ private:
 			u8 flag;
 			struct
 			{
-				u8 codeCompressed : 1;
-				u8 sdmcTitle : 1;
+				u8 is_code_compressed : 1;
+				u8 is_sdmc_title : 1;
 			};
 		};
 
-		u16 remasterVersion;
+		u16 remaster_version;
 
 		struct sCodeInfo
 		{
 			struct sCodeSegmentInfo text;
-			u32 stackSize;
+			u32 stack_size;
 			struct sCodeSegmentInfo rodata;
 			u8 reserved1[4];
 			struct sCodeSegmentInfo data;
-			u32 bssSize;
-		} codeInfo;
+			u32 bss_size;
+		} code_info;
 		
-		u64 dependencyList[MAX_DEPENDENCY_NUM];
+		u64 dependency_list[kMaxDependencyNum];
 
-		u32 saveSize;
+		u32 save_data_size;
 		u8 reserved2[4];
-		u64 jumpId;
+		u64 jump_id;
 		u8 reserved3[0x30];
 	};
 
 	struct sArm11LocalCapabilities
 	{
-		u64 programId;
-		u32 firmTidLow;
+		u64 program_id;
+		u32 firm_title_id_low;
 		union
 		{
 			u8 flag[4];
 			struct
 			{
-				u8 enableL2Cache : 1;
-				u8 cpuSpeed : 1;
+				u8 enable_l2_cache : 1;
+				u8 cpu_speed : 1;
 				u8: 6;
 
-				u8 systemModeExt : 4;
+				u8 system_mode_ext : 4;
 				u8: 4;
 
-				u8 idealProcessor : 2;
-				u8 affinityMask : 2;
-				u8 systemMode : 4;
+				u8 ideal_processor : 2;
+				u8 affinity_mask : 2;
+				u8 system_mode : 4;
 
-				int8_t threadPriority;
+				int8_t thread_priority;
 			};
 		};
-		u16 resourceLimits[MAX_RESOURCE_LIMITS];
+		u16 resource_limit_descriptors[kMaxResourceLimitNum];
 
-		u64 extdataId;
-		u32 systemSaveId[MAX_SYSTEM_SAVE_IDS];
-		u64 otherUserSaveIds;
-		u64 fsRights;
-		char serviceList[MAX_SERVICE_NUM][8];
+		u64 extdata_id;
+		u32 system_save_ids[kMaxSystemSaveIdNum];
+		u64 other_user_save_ids;
+		u64 fs_rights;
+		char service_list[kMaxServiceNum][8];
 		u8 reserved[0xf];
-		u8 resourceLimitCategory;
+		u8 resource_limit_category;
 	};
 
 	struct sArm11KernelCapabilities
 	{
-		u32 descriptors[MAX_KERNEL_DESC];
+		u32 descriptors[kMaxKernelDescNum];
 		u8 reserved[0x10];
 	};
 
 	struct sArm9AccessControl
 	{
-		u32 ioRights;
+		u32 io_rights;
 		u8 reserved[0xB];
 		u8 version;
 	};
 
 	struct sExtendedHeader
 	{
-		struct sProcessInfo processInfo;
-		struct sArm11LocalCapabilities arm11Local;
-		struct sArm11KernelCapabilities arm11Kernel;
+		struct sProcessInfo process_info;
+		struct sArm11LocalCapabilities arm11_local;
+		struct sArm11KernelCapabilities arm11_kernel;
 		struct sArm9AccessControl arm9;
 	};
 
 	struct sAccessDescriptor
 	{
 		u8 signature[0x100];
-		u8 ncchRsaModulus[0x100];
-		struct sArm11LocalCapabilities arm11Local;
-		struct sArm11KernelCapabilities arm11Kernel;
+		u8 ncch_rsa_modulus[0x100];
+		struct sArm11LocalCapabilities arm11_local;
+		struct sArm11KernelCapabilities arm11_kernel;
 		struct sArm9AccessControl arm9;
 	};
 
-	struct sExtendedHeader m_Header;
-	struct sAccessDescriptor m_AccessDesc;
+	struct sExtendedHeader header_;
+	struct sAccessDescriptor access_descriptor_;
 
-	u8 m_ExheaderHash[0x20];
+	std::vector<u32> allowed_interupts_;
+	std::vector<u32> allowed_supervisor_calls_;
+	u32 release_kernel_version_;
+	u32 handle_table_size_;
+	u32 kernel_flags_;
+	std::vector<u32> static_mappings_;
+	std::vector<u32> io_register_mappings_;
 
-	std::vector<u32> m_Interupts;
-	std::vector<u32> m_ServiceCalls;
-	u32 m_ReleaseKernelVersion;
-	u32 m_HandleTableSize;
-	u32 m_KernelFlags;
-	std::vector<u32> m_StaticMapping;
-	std::vector<u32> m_IOMapping;
-
-	int commitArm11KernelCapabilities();
+	int CommitArm11KernelCapabilities();
 };
 

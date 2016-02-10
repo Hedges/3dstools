@@ -505,9 +505,9 @@ int ElfConvert::WriteExtHeader(const char* smdhFile, const char* romfsDir)
 
 	if (romfsDir)
 	{
-		RomFS romfs;
-		safe_call(romfs.Build(romfsDir));
-		safe_call(romfs.WriteToFile(fout));
+		Romfs romfs;
+		safe_call(romfs.CreateRomfs(romfsDir));
+		fout.WriteRaw(romfs.data_blob(), romfs.data_size());
 	}
 
 	return 0;
