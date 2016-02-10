@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
-#include "exefscode.h"
+#include "exefs_code.h"
 
 #define die(msg) do { fputs(msg "\n\n", stderr); return 1; } while(0)
 #define safe_call(a) do { int rc = a; if(rc != 0) return rc; } while(0)
