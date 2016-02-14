@@ -5,8 +5,8 @@
 #define safe_call(a) do { int rc = a; if(rc != 0) return rc; } while(0)
 
 EsTicket::EsTicket() :
-	content_mask_(0),
-	limits_used_(0)
+    limits_used_(0),
+	content_mask_(0)
 {
 	memset(&body_, 0, sizeof(struct sTicketBody));
 }
