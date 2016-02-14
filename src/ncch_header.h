@@ -37,6 +37,9 @@ public:
 	inline const u8* header_blob() const { return (u8*)&header_; }
 	inline u32 header_size() const { return sizeof(struct sNcchHeader); }
 
+	// Set header for parsing ncch headers
+	int SetHeader(const u8* header);
+
 	// Basic Data
 	void SetTitleId(u64 title_id);
 	void SetProgramId(u64 program_id);
@@ -47,9 +50,9 @@ public:
 	void SetNcchType(ContentType contentType, FormType formType);
 	void SetPlatform(Platform platorm);
 	void SetBlockSize(u32 size);
-	void setNoCrypto();
-	void setFixedAesKey();
-	void setSecureAesKey(u8 keyXindex);
+	void SetNoCrypto();
+	void SetFixedAesKey();
+	void SetSecureAesKey(u8 keyXindex);
 
 	// Data segments
 	void SetExheaderData(u32 size, u32 accessdesc_size, const u8 hash[Crypto::kSha256HashLen]);
@@ -65,6 +68,7 @@ public:
 	inline bool is_encrypted() const { return (header_.flags.other_flag & NO_AES) == 0; }
 	inline bool is_fixed_aes_key() const { return (header_.flags.other_flag & FIXED_AES_KEY) != 0; }
 	inline bool is_seeded_aes_key() const { return (header_.flags.other_flag & SEED_KEY) != 0; }
+	inline bool is_cfa() const { return (header_.flags.content_type & 3) == SIMPLE_CONTENT; }
 	inline u32 ncch_size() const { return block_to_size(le_word(header_.size)); }
 	inline u32 exheader_offset() const { return exheader_size() ? sizeof(struct sNcchHeader) : 0; }
 	inline u32 exheader_size() const { return le_word(header_.exheader_size); }

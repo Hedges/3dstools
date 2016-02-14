@@ -125,7 +125,7 @@ u64 Romfs::GetDataSize(const RomfsDirScanner::sDirectory& dir)
 
 	for (size_t i = 0; i < dir.child.size(); i++)
 	{
-		size += GetDataSize(dir.child[i]);
+		size = align(size, 0x10) + GetDataSize(dir.child[i]);
 	}
 
 	return size;

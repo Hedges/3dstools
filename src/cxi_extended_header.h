@@ -163,6 +163,9 @@ public:
 	inline const u8* accessdesc_blob() const { return (const u8*)&access_descriptor_; }
 	inline u32 accessdesc_size() const { return sizeof(struct sAccessDescriptor); }
 
+	// for parsing exheader
+	int SetData(const u8* exheader, const u8* accessdesc);
+
 	// Set Process Info
 	void SetProcessName(const char* name);
 	void SetIsCodeCompressed(bool is_code_compressed);
@@ -209,6 +212,9 @@ public:
 
 	// Set Arm9 Access Control
 	void SetArm9IOControl(u32 io_rights, u8 desc_version);
+
+	//
+	inline u32 save_data_size() const { return le_word(header_.process_info.save_data_size); }
 private:
 	static const u32 kMaxInteruptNum = 32;
 	static const u32 kMaxInteruptValue = 0x7F;

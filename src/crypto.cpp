@@ -44,6 +44,7 @@ int Crypto::SignRsa2048Sha256(const u8 modulus[kRsa2048Size], const u8 private_e
 	rsa_context ctx;
 	rsa_init(&ctx, RSA_PKCS_V15, 0);
 
+	ctx.len = kRsa2048Size;
 	mpi_read_binary(&ctx.D, private_exponent, kRsa2048Size);
 	mpi_read_binary(&ctx.N, modulus, kRsa2048Size);
 
@@ -62,6 +63,7 @@ int Crypto::VerifyRsa2048Sha256(const u8 modulus[kRsa2048Size], const u8 hash[kS
 	rsa_context ctx;
 	rsa_init(&ctx, RSA_PKCS_V15, 0);
 
+	ctx.len = kRsa2048Size;
 	mpi_read_binary(&ctx.E, public_exponent, sizeof(public_exponent));
 	mpi_read_binary(&ctx.N, modulus, kRsa2048Size);
 

@@ -16,7 +16,7 @@ CxiExtendedHeader::~CxiExtendedHeader()
 
 }
 
-int CxiExtendedHeader::CreateExheader(const u8 ncch_rsa_modulus[0x100], const u8 accessdesc_rsa_modulus[0x100], const u8 accessdesc_rsa_priv_exponent[0x100])
+int CxiExtendedHeader::CreateExheader(const u8 ncch_rsa_modulus[Crypto::kRsa2048Size], const u8 accessdesc_rsa_modulus[Crypto::kRsa2048Size], const u8 accessdesc_rsa_priv_exponent[Crypto::kRsa2048Size])
 {
 	u8 hash[0x20];
 
@@ -39,7 +39,7 @@ int CxiExtendedHeader::CreateExheader(const u8 ncch_rsa_modulus[0x100], const u8
 
 	// modify data
 	access_descriptor_.arm11_local.ideal_processor = 1 << access_descriptor_.arm11_local.ideal_processor;
-	access_descriptor_.arm11_local.thread_priority = 0; // thread priority cannot be lower than in accessdesc
+	access_descriptor_.arm11_local.thread_priority = 0;//access_descriptor_.arm11_local.thread_priority/2; // thread priority cannot be lower than in accessdesc
 
 	// sign data
 	if (accessdesc_rsa_modulus != NULL && accessdesc_rsa_priv_exponent != NULL)
@@ -52,6 +52,13 @@ int CxiExtendedHeader::CreateExheader(const u8 ncch_rsa_modulus[0x100], const u8
 		memset(access_descriptor_.signature, 0xFF, 0x100);
 	}
 
+	return 0;
+}
+
+int CxiExtendedHeader::SetData(const u8* exheader, const u8* accessdesc)
+{
+	memcpy((u8*)&header_, exheader, sizeof(struct sExtendedHeader));
+	memcpy((u8*)&access_descriptor_, accessdesc, sizeof(struct sAccessDescriptor));
 	return 0;
 }
 

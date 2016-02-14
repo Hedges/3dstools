@@ -10,6 +10,12 @@ public:
 	static const int kAesBlockSize = 0x10;
 	static const int kRsa2048Size = 0x100;
 
+	struct sRsa2048Key
+	{
+		u8 modulus[Crypto::kRsa2048Size];
+		u8 priv_exponent[Crypto::kRsa2048Size];
+	};
+
 	static void Sha1(const u8* in, u32 size, u8 hash[kSha1HashLen]);
 	static void Sha256(const u8* in, u32 size, u8 hash[kSha256HashLen]);
 

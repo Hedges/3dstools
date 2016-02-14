@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstring>
 #include <cmath>
 #include "ncch_header.h"
@@ -5,6 +6,7 @@
 
 #define NCCH_MAGIC "NCCH"
 
+#define die(msg) do { fputs(msg "\n\n", stderr); return 1; } while(0)
 #define safe_call(a) do { int rc = a; if(rc != 0) return rc; } while(0)
 
 
@@ -44,6 +46,15 @@ int NcchHeader::CreateHeader(const u8 modulus[0x100], const u8 priv_exponent[0x1
 	{
 		memset(header_.signature, 0xFF, 0x100);
 	}
+
+	return 0;
+}
+
+int NcchHeader::SetHeader(const u8 * header)
+{
+	memcpy((u8*)&header_, header, sizeof(struct sNcchHeader));
+
+	if (memcmp(header_.magic, NCCH_MAGIC, 4) != 0) die("[ERROR] Not a NCCH file!");
 
 	return 0;
 }
@@ -93,19 +104,19 @@ void NcchHeader::SetBlockSize(u32 size)
 	header_.flags.block_size = log2l(size) - 9;
 }
 
-void NcchHeader::setNoCrypto()
+void NcchHeader::SetNoCrypto()
 {
 	header_.flags.other_flag &= ~(NO_AES|FIXED_AES_KEY|SEED_KEY);
 	header_.flags.other_flag |= NO_AES;
 }
 
-void NcchHeader::setFixedAesKey()
+void NcchHeader::SetFixedAesKey()
 {
 	header_.flags.other_flag &= ~(NO_AES|FIXED_AES_KEY|SEED_KEY);
 	header_.flags.other_flag |= FIXED_AES_KEY;
 }
 
-void NcchHeader::setSecureAesKey(u8 keyXindex)
+void NcchHeader::SetSecureAesKey(u8 keyXindex)
 {
 	header_.flags.other_flag &= ~(NO_AES|FIXED_AES_KEY);
 	header_.flags.key_x_index = keyXindex;
