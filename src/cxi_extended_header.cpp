@@ -399,6 +399,8 @@ void CxiExtendedHeader::SetAllowedSupervisorCalls(const std::vector<u8>& svc_lis
 
 void CxiExtendedHeader::SetReleaseKernelVersion(u8 major, u8 minor)
 {
+	if (major == 0 && minor == 0) return;
+
 	release_kernel_version_ = make_kernel_capability(KERNEL_RELEASE_VERSION, (major << 8 | minor));
 }
 
