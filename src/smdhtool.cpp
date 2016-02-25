@@ -67,28 +67,22 @@ private:
 		utf16char_t* description;
 		utf16char_t* author;
 
-		// create UTF-16 copy of short title
+		// create UTF-16 copy of name
 		name = strcopy_8to16((args_.name == NULL) ? "Sample Homebrew" : args_.name);
 		if (name == NULL || utf16_strlen(name) > 0x40)
 		{
 			die("[ERROR] Name is too long.");
 		}
-		
-		os_fputs(name, stdout);
-		printf("\n");
 
-		// create UTF-16 copy of long title
+		// create UTF-16 copy of description
 		description = strcopy_8to16((args_.description == NULL) ? "Sample Homebrew" : args_.description);
 		if (description == NULL || utf16_strlen(description) > 0x80)
 		{
 			free(name);
 			die("[ERROR] Description is too long.");
 		}
-		
-		os_fputs(description, stdout);
-		printf("\n");
 
-		// create UTF-16 copy of publisher
+		// create UTF-16 copy of author
 		author = strcopy_8to16((args_.author == NULL) ? "" : args_.author);
 		if (author == NULL || utf16_strlen(author) > 0x40)
 		{
