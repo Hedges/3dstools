@@ -63,36 +63,42 @@ private:
 
 	int MakeAppTitles()
 	{		
-		utf16char_t* short_name;
-		utf16char_t* long_name;
+		utf16char_t* name;
+		utf16char_t* description;
 		utf16char_t* author;
 
 		// create UTF-16 copy of short title
-		short_name = strcopy_8to16(args_.name);
-		if (short_name == NULL || utf16_strlen(short_name) > 0x40)
+		name = strcopy_8to16((args_.name == NULL) ? "Sample Homebrew" : args_.name);
+		if (name == NULL || utf16_strlen(name) > 0x40)
 		{
-			die("[ERROR] Short name is too long.");
+			die("[ERROR] Name is too long.");
 		}
 		
+		os_fputs(name, stdout);
+		printf("\n");
+
 		// create UTF-16 copy of long title
-		long_name = strcopy_8to16(args_.description);
-		if (long_name == NULL || utf16_strlen(long_name) > 0x80)
+		description = strcopy_8to16((args_.description == NULL) ? "Sample Homebrew" : args_.description);
+		if (description == NULL || utf16_strlen(description) > 0x80)
 		{
-			free(short_name);
-			die("[ERROR] Long name is too long.");
+			free(name);
+			die("[ERROR] Description is too long.");
 		}
 		
+		os_fputs(description, stdout);
+		printf("\n");
+
 		// create UTF-16 copy of publisher
-		author = strcopy_8to16(args_.author);
+		author = strcopy_8to16((args_.author == NULL) ? "" : args_.author);
 		if (author == NULL || utf16_strlen(author) > 0x40)
 		{
-			free(short_name);
-			free(long_name);
-			die("[ERROR] Publisher name is too long.");
+			free(name);
+			free(description);
+			die("[ERROR] Author name is too long.");
 		}
 
-		smdh_.SetTitle(Smdh::SMDH_TITLE_JAPANESE, short_name, long_name, author);
-		smdh_.SetTitle(Smdh::SMDH_TITLE_ENGLISH, short_name, long_name, author);
+		smdh_.SetTitle(Smdh::SMDH_TITLE_JAPANESE, name, description, author);
+		smdh_.SetTitle(Smdh::SMDH_TITLE_ENGLISH, name, description, author);
 		return 0;
 	}
 
@@ -212,10 +218,8 @@ private:
 				img_24_data[id + 3] = (u8)((a1 + a2 + a3 + a4) / 4);
 			}
 		}
-		printf("b\n");
 		GetTiledIconData(small_icon, img_24_data, 24, 24);
 		
-
 		smdh_.SetIconData(small_icon, large_icon);
 		return 0;
 	}
@@ -300,7 +304,7 @@ int ParseArgs(struct sArgInfo& info, int argc, char **argv)
 		{
 			info.name = value;
 		}
-		else if (strcmp(arg, "decription") == 0)
+		else if (strcmp(arg, "description") == 0)
 		{
 			info.description = value;
 		}

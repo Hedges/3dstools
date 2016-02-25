@@ -31,7 +31,7 @@ void Smdh::SetTitle(SmdhTitle language, utf16char_t name[kNameLen], utf16char_t 
 	}
 
 	// description
-	for (i = 0; i < kDescriptionLen && name[i] != 0; i++)
+	for (i = 0; i < kDescriptionLen && description[i] != 0; i++)
 	{
 		smdh_.titles[language].description[i] = le_hword(description[i]);
 	}
