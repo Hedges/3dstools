@@ -79,19 +79,19 @@
 /* File related */
 int os_fstat(const oschar_t* path);
 uint64_t os_fsize(const oschar_t* path);
-int os_makedir(const oschar_t *dir);
+int os_makedir(const oschar_t* dir);
 
 /* UTF16 String property functions */
 uint32_t utf16_strlen(const utf16char_t* str);
 
 /* String Copy and Conversion */
-char* strcopy_8to8(const char *src);
-utf16char_t* strcopy_8to16(const char *src);
-utf16char_t* strcopy_16to16(const utf16char_t *src);
+char* strcopy_8to8(const char* src);
+utf16char_t* strcopy_8to16(const char* src);
+utf16char_t* strcopy_16to16(const utf16char_t* src);
 #ifndef _WIN32
-utf16char_t* strcopy_UTF8toUTF16(const char *src);
-char* strcopy_UTF16toUTF8(const utf16char_t *src);
+utf16char_t* strcopy_UTF8toUTF16(const char* src);
+char* strcopy_UTF16toUTF8(const utf16char_t* src);
 #endif
 
 /* String Append and Create */
-oschar_t* os_AppendToPath(const oschar_t *src, const oschar_t *add);
+oschar_t* os_AppendToPath(const oschar_t* src, const oschar_t* add);

@@ -257,14 +257,14 @@ private:
 	}
 };
 
-int usage(const char *progName)
+int usage(const char *prog_name)
 {
 	fprintf(stderr,
 		"Usage:\n"
 		"    %s input.cxi output.cia [options]\n\n"
 		"Options:\n"
 		"    --version=value    : Specify title version\n"
-		, progName);
+		, prog_name);
 	return 1;
 }
 

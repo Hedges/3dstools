@@ -1471,7 +1471,7 @@ private:
 	}
 };
 
-int usage(const char *progName)
+int usage(const char *prog_name)
 {
 	fprintf(stderr,
 		"Usage:\n"
@@ -1483,7 +1483,7 @@ int usage(const char *progName)
 		"    --uniqueid=id      : Specify NCCH UniqueID\n"
 		"    --productcode=str  : Specify NCCH ProductCode\n"
 		"    --title=str        : Specify ExHeader name\n"
-		, progName);
+		, prog_name);
 	return 1;
 }
 
