@@ -8,6 +8,9 @@
 #include "types.h"
 #include "elf.h"
 #include "FileClass.h"
+#include "ByteBuffer.h"
+#include "smdh.h"
+#include "ctr_app_icon.h"
 #include "romfs.h"
 
 using std::vector;
@@ -122,7 +125,7 @@ public:
 	int Convert();
 
 	void EnableExtHeader() { hasExtHeader = true; }
-	int WriteExtHeader(const char* smdhFile, const char* romfsDir);
+	int WriteExtHeader(const ByteBuffer& smdh, const char* romfsDir);
 };
 
 int ElfConvert::ScanRelocSection(u32 vsect, byte_t* sectData, Elf32_Sym* symTab, Elf32_Rel* relTab, int relCount)
@@ -460,45 +463,22 @@ int ElfConvert::Convert()
 	return 0;
 }
 
-int ElfConvert::WriteExtHeader(const char* smdhFile, const char* romfsDir)
+int ElfConvert::WriteExtHeader(const ByteBuffer& smdh, const char* romfsDir)
 {
-	FILE* f = fopen(smdhFile, "rb");
-	if (!f) die("Cannot open SMDH file!");
-
-	fseek(f, 0, SEEK_END);
-	u32 smdhSize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	u8* buf = (u8*)malloc(smdhSize);
-	if (!buf)
-	{
-		fclose(f);
-		die("Out of memory!");
-	}
-
-	int rc = fread(buf, smdhSize, 1, f);
-	fclose(f);
-
-	if (!rc)
-	{
-		free(buf);
-		die("Cannot read SMDH data!");
-	}
 
 	u32 temp = fout.Tell();
 	fout.Seek(extHeaderPos, SEEK_SET);
 	fout.WriteWord(temp);
-	fout.WriteWord(smdhSize);
+	fout.WriteWord(smdh.size());
 	if (romfsDir)
 	{
-		u32 romfsPos = temp + smdhSize;
+		u32 romfsPos = temp + smdh.size();
 		romfsPos = (romfsPos + 3) &~ 3;
 		fout.WriteWord(romfsPos);
 	}
 
 	fout.Seek(temp, SEEK_SET);
-	fout.WriteRaw(buf, smdhSize);
-	free(buf);
+	fout.WriteRaw(smdh.data_const(), smdh.size());
 
 	while (fout.Tell() & 3)
 		fout.WriteByte(0);
@@ -517,7 +497,10 @@ struct argInfo
 {
 	char* outFile;
 	char* elfFile;
-	char* smdhFile;
+	char* iconFile;
+	char* shortTitle;
+	char* longTitle;
+	char* authorName;
 	char* romfsDir;
 };
 
@@ -527,7 +510,10 @@ int usage(const char* progName)
 		"Usage:\n"
 		"    %s input.elf output.3dsx [options]\n\n"
 		"Options:\n"
-		"    --smdh=input.smdh : Embeds SMDH metadata into the output file.\n"
+		"    --icon=input.png  : Embeds SMDH icon in the output file.\n"
+		"    --title=str       : Sets title in SMDH metadata.\n"
+		"    --description=str : Sets decription in SMDH metadata.\n"
+		"    --author=str      : Sets author in SMDH metadata.\n"
 		"    --romfs=dir       : Embeds RomFS into the output file.\n"
 		, progName);
 	return 1;
@@ -549,9 +535,15 @@ int parseArgs(argInfo& info, int argc, char* argv[])
 			*value++ = 0;
 			if (!*value) return usage(argv[0]);
 
-			if (strcmp(arg, "smdh")==0)
-				info.smdhFile = FixMinGWPath(value);
-			else if (strcmp(arg, "romfs")==0)
+			if (strcmp(arg, "icon") == 0)
+				info.iconFile = FixMinGWPath(value);
+			else if (strcmp(arg, "title") == 0)
+				info.shortTitle = FixMinGWPath(value);
+			else if (strcmp(arg, "description") == 0)
+				info.longTitle = FixMinGWPath(value);
+			else if (strcmp(arg, "author") == 0)
+				info.authorName = FixMinGWPath(value);
+			else if (strcmp(arg, "romfs") == 0)
 				info.romfsDir = FixMinGWPath(value);
 			else
 				return usage(argv[0]);
@@ -566,6 +558,57 @@ int parseArgs(argInfo& info, int argc, char* argv[])
 		}
 	}
 	return status < 2 ? usage(argv[0]) : 0;
+}
+
+int createSmdh(const argInfo& args, ByteBuffer& out)
+{
+	Smdh smdh;
+	CtrAppIcon icon;
+
+	if (args.iconFile == NULL) return 0;
+
+	// Create icon data
+	safe_call(icon.CreateIcon(args.iconFile));
+	smdh.SetIconData(icon.icon24(), icon.icon48());
+
+	// Create UTF-16 Strings for SMDH
+	utf16char_t* name;
+	utf16char_t* description;
+	utf16char_t* author;
+
+	// name
+	name = strcopy_8to16((args.shortTitle == NULL) ? "Sample Homebrew" : args.shortTitle);
+	if (name == NULL || utf16_strlen(name) > Smdh::kNameLen)
+	{
+		die("[ERROR] Name is too long.");
+	}
+
+	// description
+	description = strcopy_8to16((args.longTitle == NULL) ? "Sample Homebrew" : args.longTitle);
+	if (description == NULL || utf16_strlen(description) > Smdh::kDescriptionLen)
+	{
+		free(name);
+		die("[ERROR] Description is too long.");
+	}
+
+	// author
+	author = strcopy_8to16((args.authorName == NULL) ? "Homebrew Author" : args.authorName);
+	if (author == NULL || utf16_strlen(author) > Smdh::kAuthorLen)
+	{
+		free(name);
+		free(description);
+		die("[ERROR] Author name is too long.");
+	}
+
+	for (int i = 0; i < 16; i++)
+	{
+		smdh.SetTitle((Smdh::SmdhTitle)i, name, description, author);
+	}
+
+	out.alloc(smdh.data_size());
+	memcpy(out.data(), smdh.data_blob(), smdh.data_size());
+
+	return 0;
 }
 
 int main(int argc, char* argv[])
@@ -586,11 +629,14 @@ int main(int argc, char* argv[])
 	fread(b, 1, elfSize, elf_file);
 	fclose(elf_file);
 
+	ByteBuffer smdh;
+	safe_call(createSmdh(args, smdh));
+
 	int rc = 0;
 	do {
 		ElfConvert cnv(args.outFile, b, 0);
 
-		bool hasExtHeader = args.smdhFile || args.romfsDir;
+		bool hasExtHeader = smdh.size() || args.romfsDir;
 		if (hasExtHeader)
 			cnv.EnableExtHeader();
 
@@ -598,7 +644,7 @@ int main(int argc, char* argv[])
 		if (rc != 0) break;
 
 		if (hasExtHeader)
-			rc = cnv.WriteExtHeader(args.smdhFile, args.romfsDir);
+			rc = cnv.WriteExtHeader(smdh, args.romfsDir);
 	} while(0);
 	free(b);
 

@@ -9,6 +9,8 @@
 #include "ncch_header.h"
 #include "cxi_extended_header.h"
 #include "exefs_code.h"
+#include "ctr_app_icon.h"
+#include "smdh.h"
 #include "exefs.h"
 #include "ivfc.h"
 #include "romfs.h"
@@ -32,15 +34,18 @@ static inline char* FixMinGWPath(char* buf)
 
 struct sArgInfo
 {
-	const char *elf_file;
-	const char *spec_file;
-	const char *out_file;
-	const char *icon_file;
-	const char *banner_file;
-	const char *romfs_dir;
-	const char *unique_id;
-	const char *product_code;
-	const char *title;
+	const char* elf_file;
+	const char* spec_file;
+	const char* out_file;
+	const char* icon_file;
+	const char* banner_image_file;
+	const char* banner_audio_file;
+	const char* romfs_dir;
+	const char* unique_id;
+	const char* product_code;
+	const char* short_title;
+	const char* long_title;
+	const char* author_name;
 };
 
 class NcchBuilder
@@ -184,6 +189,8 @@ private:
 	u8 logo_hash_[Crypto::kSha256HashLen];
 	
 	ExefsCode exefs_code_;
+	ByteBuffer exefs_banner_;
+	ByteBuffer exefs_icon_;
 	Exefs exefs_;
 	u32 exefs_hashed_data_size_;
 	u8 exefs_hash_[Crypto::kSha256HashLen];
@@ -220,9 +227,9 @@ private:
 		}
 
 		// exheader title
-		if (args_.title != NULL)
+		if (args_.short_title != NULL)
 		{
-			strncpy(config_.app_title, args_.title, 8);
+			strncpy(config_.app_title, args_.short_title, 8);
 		}
 		else
 		{
@@ -246,7 +253,7 @@ private:
 		config_.memory_type = CxiExtendedHeader::MEMTYPE_APPLICATION;
 
 		// enable system calls 0x00-0x7D
-		for (int i = 0; i < 0x7E; i++)
+		for (int i = 0; i <= 0x7D; i++)
 		{
 			config_.svc_calls.push_back(i);
 		}
@@ -1176,6 +1183,78 @@ private:
 		return 0;
 	}
 
+	int MakeExefsBanner()
+	{
+		// todo
+		return 0;
+	}
+
+	int MakeExefsIcon()
+	{
+		Smdh smdh;
+
+		if (args_.icon_file == NULL)
+		{
+			return 0;
+		}
+
+		// Create icon data
+		CtrAppIcon icon;
+		safe_call(icon.CreateIcon(args_.icon_file));
+		smdh.SetIconData(icon.icon24(), icon.icon48());
+
+		// Create UTF-16 Strings for SMDH
+		utf16char_t* name;
+		utf16char_t* description;
+		utf16char_t* author;
+
+		// name
+		name = strcopy_8to16((args_.short_title == NULL) ? "Sample Homebrew" : args_.short_title);
+		if (name == NULL || utf16_strlen(name) > Smdh::kNameLen)
+		{
+			die("[ERROR] Name is too long.");
+		}
+
+		// description
+		description = strcopy_8to16((args_.long_title == NULL) ? "Sample Homebrew" : args_.long_title);
+		if (description == NULL || utf16_strlen(description) > Smdh::kDescriptionLen)
+		{
+			free(name);
+			die("[ERROR] Description is too long.");
+		}
+
+		// author
+		author = strcopy_8to16((args_.author_name == NULL) ? "" : args_.author_name);
+		if (author == NULL || utf16_strlen(author) > Smdh::kAuthorLen)
+		{
+			free(name);
+			free(description);
+			die("[ERROR] Author name is too long.");
+		}
+
+		smdh.SetTitle(Smdh::SMDH_TITLE_JAPANESE, name, description, author);
+		smdh.SetTitle(Smdh::SMDH_TITLE_ENGLISH, name, description, author);
+
+
+		// Set SMDH Flags
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_CERO, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_ESRB, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_USK, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_PEGI_GEN, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_PEGI_PRT, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_PEGI_BBFC, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_COB, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_GRB, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetAgeRestriction(Smdh::SMDH_RATING_AGENCY_CGSRR, 0, Smdh::SMDH_AGE_RATING_FLAG_NO_RESTRICTION);
+		smdh.SetFlag(Smdh::SMDH_FLAG_VISABLE || Smdh::SMDH_FLAG_RECORD_USAGE);
+		smdh.SetRegionLockout(Smdh::SMDH_REGION_ALL);
+
+		safe_call(exefs_icon_.alloc(smdh.data_size()));
+		memcpy(exefs_icon_.data(), smdh.data_blob(), smdh.data_size());
+
+		return 0;
+	}
+
 	int MakeNcchLogo()
 	{
 		static const byte_t kCxiLogo[] =
@@ -1191,10 +1270,10 @@ private:
 	}
 
 	int MakeExefs()
-	{
-		ByteBuffer banner, icon;
-		
+	{		
 		safe_call(MakeExefsCode());
+		safe_call(MakeExefsBanner());
+		safe_call(MakeExefsIcon());
 		safe_call(MakeNcchLogo());
 
 		if (exefs_code_.code_size() > 0)
@@ -1206,22 +1285,14 @@ private:
 			die("[ERROR] No code binary was created!");
 		}
 
-		if (args_.banner_file)
+		if (exefs_banner_.size() > 0)
 		{
-			if (banner.OpenFile(args_.banner_file) != 0)
-			{
-				die("[ERROR] Cannot open banner file!");
-			}
-			safe_call(exefs_.SetExefsFile("banner", banner.data(), banner.size()));
+			safe_call(exefs_.SetExefsFile("banner", exefs_banner_.data_const(), exefs_banner_.size()));
 		}
 
-		if (args_.icon_file)
+		if (exefs_icon_.size() > 0)
 		{
-			if (icon.OpenFile(args_.icon_file) != 0)
-			{
-				die("[ERROR] Cannot open icon file!");
-			}
-			safe_call(exefs_.SetExefsFile("icon", icon.data(), icon.size()));
+			safe_call(exefs_.SetExefsFile("icon", exefs_icon_.data_const(), exefs_icon_.size()));
 		}
 
 		if (logo_.size())
@@ -1477,12 +1548,15 @@ int usage(const char *prog_name)
 		"Usage:\n"
 		"    %s input.elf spec.yaml output.cxi [options]\n\n"
 		"Options:\n"
-		"    --icon=input.smdh  : Embed homemenu icon\n"
-		"    --banner=input.bnr : Embed homemenu banner\n"
+		"    --icon=input.png   : App icon\n"
+		"    --banner=input.png : App banner image\n"
+		"    --jingle=input.wav : App banner soundbite\n"
 		"    --romfs=dir        : Embed RomFS\n"
-		"    --uniqueid=id      : Specify NCCH UniqueID\n"
-		"    --productcode=str  : Specify NCCH ProductCode\n"
-		"    --title=str        : Specify ExHeader name\n"
+		"    --uniqueid=id      : NCCH UniqueID\n"
+		"    --productcode=str  : NCCH ProductCode\n"
+		"    --title=str        : App title\n"
+		"    --description=str  : App description\n"
+		"    --author=str       : App author\n"
 		, prog_name);
 	return 1;
 }
@@ -1533,15 +1607,15 @@ int ParseArgs(struct sArgInfo& info, int argc, char **argv)
 		}
 		else if (strcmp(arg, "banner") == 0)
 		{
-			info.banner_file = FixMinGWPath(value);
+			info.banner_image_file = FixMinGWPath(value);
+		}
+		else if (strcmp(arg, "jingle") == 0)
+		{
+			info.banner_audio_file = FixMinGWPath(value);
 		}
 		else if (strcmp(arg, "romfs") == 0)
 		{
 			info.romfs_dir = FixMinGWPath(value);
-		}
-		else if (strcmp(arg, "banner") == 0)
-		{
-			info.banner_file = FixMinGWPath(value);
 		}
 		else if (strcmp(arg, "uniqueid") == 0)
 		{
@@ -1553,7 +1627,15 @@ int ParseArgs(struct sArgInfo& info, int argc, char **argv)
 		}
 		else if (strcmp(arg, "title") == 0)
 		{
-			info.title = value;
+			info.short_title = value;
+		}
+		else if (strcmp(arg, "description") == 0)
+		{
+			info.long_title = value;
+		}
+		else if (strcmp(arg, "author") == 0)
+		{
+			info.author_name = value;
 		}
 		else
 		{
