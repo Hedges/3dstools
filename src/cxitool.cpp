@@ -1216,7 +1216,7 @@ private:
 		}
 
 		// description
-		description = strcopy_8to16((args_.long_title == NULL) ? "Sample Homebrew" : args_.long_title);
+		description = strcopy_8to16((args_.long_title == NULL) ? ((args_.short_title == NULL) ? "Sample Homebrew" : args_.short_title) : args_.long_title);
 		if (description == NULL || utf16_strlen(description) > Smdh::kDescriptionLen)
 		{
 			free(name);
