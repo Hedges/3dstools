@@ -17,8 +17,8 @@ config.status
 Makefile
 3dsxdump
 3dsxtool
-smdhtool
 cxitool
+ciatool
 .deps/
 *.bz2
 *.dirstamp
