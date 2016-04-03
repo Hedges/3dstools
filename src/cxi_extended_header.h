@@ -340,8 +340,8 @@ private:
 
 	struct sAccessDescriptor
 	{
-		u8 signature[0x100];
-		u8 ncch_rsa_modulus[0x100];
+		u8 signature[Crypto::kRsa2048Size];
+		u8 ncch_rsa_modulus[Crypto::kRsa2048Size];
 		struct sArm11LocalCapabilities arm11_local;
 		struct sArm11KernelCapabilities arm11_kernel;
 		struct sArm9AccessControl arm9;

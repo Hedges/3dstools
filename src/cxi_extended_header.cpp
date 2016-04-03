@@ -44,7 +44,7 @@ int CxiExtendedHeader::CreateExheader(const u8 ncch_rsa_modulus[Crypto::kRsa2048
 	// sign data
 	if (accessdesc_rsa_modulus != NULL && accessdesc_rsa_priv_exponent != NULL)
 	{
-		Crypto::Sha256((u8*)&access_descriptor_.ncch_rsa_modulus, sizeof(struct sAccessDescriptor) - 0x100, hash);
+		Crypto::Sha256((u8*)&access_descriptor_.ncch_rsa_modulus, sizeof(struct sAccessDescriptor) - Crypto::kRsa2048Size, hash);
 		safe_call(Crypto::SignRsa2048Sha256(accessdesc_rsa_modulus, accessdesc_rsa_priv_exponent, hash, access_descriptor_.signature));
 	}
 	else

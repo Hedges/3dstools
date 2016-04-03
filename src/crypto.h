@@ -8,7 +8,9 @@ public:
 	static const int kSha256HashLen = 32;
 	static const int kAes128KeySize = 0x10;
 	static const int kAesBlockSize = 0x10;
+	static const int kRsa1024Size = 0x80;
 	static const int kRsa2048Size = 0x100;
+	static const int kRsa4096Size = 0x200;
 
 	struct sRsa2048Key
 	{

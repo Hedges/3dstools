@@ -20,28 +20,27 @@ int EsSign::RsaSign(EsSignType type, const u8* hash, const u8* modulus, const u8
 		case(ES_SIGN_RSA4096_SHA1) :
 		case(ES_SIGN_RSA4096_SHA256) :
 		{
-			rsa.len = 0x200;
-			mpi_read_binary(&rsa.D, priv_exp, rsa.len);
-			mpi_read_binary(&rsa.N, modulus, rsa.len);
-			memset(signature, 0, sizeof(kRsa4096SignLen));
+			rsa.len = Crypto::kRsa4096Size;
 			hash_id = (type == ES_SIGN_RSA4096_SHA1) ? SIG_RSA_SHA1 : SIG_RSA_SHA256;
 			hash_len = (type == ES_SIGN_RSA4096_SHA1) ? Crypto::kSha1HashLen : Crypto::kSha256HashLen;
+			memset(signature, 0, sizeof(kRsa4096SignLen));
 			break;
 		}
 		case(ES_SIGN_RSA2048_SHA1) :
 		case(ES_SIGN_RSA2048_SHA256) :
 		{
-			rsa.len = 0x100;
-			mpi_read_binary(&rsa.D, priv_exp, rsa.len);
-			mpi_read_binary(&rsa.N, modulus, rsa.len);
-			memset(signature, 0, sizeof(kRsa4096SignLen));
+			rsa.len = Crypto::kRsa2048Size;
 			hash_id = (type == ES_SIGN_RSA2048_SHA1) ? SIG_RSA_SHA1 : SIG_RSA_SHA256;
 			hash_len = (type == ES_SIGN_RSA2048_SHA1) ? Crypto::kSha1HashLen : Crypto::kSha256HashLen;
+			memset(signature, 0, sizeof(kRsa2048SignLen));
 			break;
 		}
 		default:
 			return 1;
 	}
+
+	mpi_read_binary(&rsa.D, priv_exp, rsa.len);
+	mpi_read_binary(&rsa.N, modulus, rsa.len);
 
 	// set signature id
 	*((u32*)(signature)) = be_word(type);
@@ -74,8 +73,7 @@ int EsSign::RsaVerify(const u8* hash, const u8* modulus, const u8* signature)
 	case(ES_SIGN_RSA4096_SHA1) :
 	case(ES_SIGN_RSA4096_SHA256) :
 	{
-		mpi_read_binary(&rsa.E, public_exponent, sizeof(public_exponent));
-		mpi_read_binary(&rsa.N, modulus, 0x200);
+		rsa.len = Crypto::kRsa4096Size;
 		hash_id = (type == ES_SIGN_RSA4096_SHA1) ? SIG_RSA_SHA1 : SIG_RSA_SHA256;
 		hash_len = (type == ES_SIGN_RSA4096_SHA1) ? Crypto::kSha1HashLen : Crypto::kSha256HashLen;
 		break;
@@ -83,8 +81,7 @@ int EsSign::RsaVerify(const u8* hash, const u8* modulus, const u8* signature)
 	case(ES_SIGN_RSA2048_SHA1) :
 	case(ES_SIGN_RSA2048_SHA256) :
 	{
-		mpi_read_binary(&rsa.E, public_exponent, sizeof(public_exponent));
-		mpi_read_binary(&rsa.N, modulus, 0x200);
+		rsa.len = Crypto::kRsa2048Size;
 		hash_id = (type == ES_SIGN_RSA2048_SHA1) ? SIG_RSA_SHA1 : SIG_RSA_SHA256;
 		hash_len = (type == ES_SIGN_RSA2048_SHA1) ? Crypto::kSha1HashLen : Crypto::kSha256HashLen;
 		break;
@@ -92,6 +89,9 @@ int EsSign::RsaVerify(const u8* hash, const u8* modulus, const u8* signature)
 	default:
 		return 1;
 	}
+
+	mpi_read_binary(&rsa.E, public_exponent, sizeof(public_exponent));
+	mpi_read_binary(&rsa.N, modulus, rsa.len);
 
 	ret = rsa_rsassa_pkcs1_v15_verify(&rsa, RSA_PRIVATE, hash_id, hash_len, hash, signature + 4);
 
